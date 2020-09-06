@@ -138,13 +138,13 @@ void mouse( int button, int state, int x, int y )
   if ( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
      {
         printf ("%d   %d\n", x, y);
-        drawBox( x, y );
+        drawBox( x, WINDOW_MAX_Y - y );
      }
 
   if ( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
      {
         printf ("%d   %d\n", x, y);
-        eraseBox( x, y );
+        eraseBox( x, WINDOW_MAX_Y - y );
      }
 
   if ( button == GLUT_MIDDLE_BUTTON && state == GLUT_DOWN )
