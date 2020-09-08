@@ -5,4 +5,5 @@ class Vec2
     float X;
     float Y;
     Vec2(float x, float y);
+    Vec2();
 };
