@@ -2,27 +2,54 @@
 
 #include <GL/glut.h>
 #include <stdio.h>
+#include <vector>
 #include "Vec2.h"
 
 // These are defined in a global scope
 
-GLubyte red, green, blue;
 int COLORS_DEFINED;
+std::vector<Vec2> points;
+bool polygonDrawn = false;
+enum Mode {OUTLINE, TESSELATION, BAD_FILL, GOOD_FILL};
+Mode currMode = OUTLINE;
 
 // Specity the values to place and size the window on the screen
 
 const int WINDOW_POSITION_X = 100;
 const int WINDOW_POSITION_Y = 100;
-const int WINDOW_MAX_X = 400;
-const int WINDOW_MAX_Y = 400;
+const int WINDOW_MAX_X = 800;
+const int WINDOW_MAX_Y = 800;
 
 // Specify the coordinate ranges for the world coordinates in the 2D Frame
 
 const float WORLD_COORDINATE_MIN_X = 0.0;
-const float WORLD_COORDINATE_MAX_X = 400.0;
+const float WORLD_COORDINATE_MAX_X = WINDOW_MAX_X;
 const float WORLD_COORDINATE_MIN_Y = 0.0;
-const float WORLD_COORDINATE_MAX_Y = 400.0;
+const float WORLD_COORDINATE_MAX_Y = WINDOW_MAX_Y;
 
+
+//determinate of 2x2 matrix
+float det(float a, float b, float c, float d)
+{
+  /*
+    | a b |
+    | c d |
+  */
+  return a*d - b *c;
+}
+
+//returns true if two line segments intersect
+bool intersect(Vec2 startPoint1, Vec2 endPoint1, Vec2 startPoint2, Vec2 endPoint2)
+{
+  float den = det(endPoint1.X - startPoint1.X, -(endPoint2.X - startPoint2.X), endPoint1.Y - startPoint1.Y,  -(endPoint2.Y - startPoint2.Y));
+  if(den == 0) //parallel line segments
+    return false;
+
+  float u_a = det(startPoint2.X - startPoint1.X, -(endPoint2.X - startPoint2.X), startPoint2.Y - startPoint1.Y, -(endPoint2.Y - startPoint2.Y)) / den;
+  float u_b = det(endPoint1.X - startPoint1.X, startPoint2.X - startPoint1.X, endPoint1.Y - startPoint1.Y, startPoint2.Y - startPoint1.Y) / den;
+
+  return u_a > 0 && u_a < 1 && u_b > 0 && u_b < 1;
+}
 
 void myglutInit( int argc, char** argv )
 {
@@ -30,7 +57,7 @@ void myglutInit( int argc, char** argv )
     glutInitDisplayMode (GLUT_SINGLE | GLUT_RGB); /* default, not needed */
     glutInitWindowSize(WINDOW_MAX_X,WINDOW_MAX_Y); /* set pixel window */
     glutInitWindowPosition(WINDOW_POSITION_X, WINDOW_POSITION_Y); /* place window top left on display */
-    glutCreateWindow("Mouse and Keyboard Interaction"); /* window title */
+    glutCreateWindow("Polygon Tesselation"); /* window title */
 }
 
 
@@ -54,110 +81,199 @@ void myInit(void)
       glMatrixMode(GL_MODELVIEW);
 }
 
+void drawOutline()
+{
+  glBegin(GL_LINES);
+      int n = points.size();
+      for(int i =0; i < n; i++)
+      {
+        if( i == 0)
+        {
+          glVertex2f(points[i].X, points[i].Y);
+          glVertex2f(points[n-1].X, points[n-1].Y);
+        }
+        else
+        {
+          glVertex2f(points[i].X, points[i].Y);
+          glVertex2f(points[i-1].X, points[i-1].Y);
+        }
+      }
+
+  glEnd();
+}
+
+void drawTesselation()
+{
+
+}
+
+void drawGoodFill()
+{
+
+}
+
+void drawBadFill()
+{
+  glBegin(GL_POLYGON);
+      int n = points.size();
+      for(int i =0; i < n; i++)
+      {
+        if( i == 0)
+        {
+          glVertex2f(points[i].X, points[i].Y);
+          glVertex2f(points[n-1].X, points[n-1].Y);
+        }
+        else
+        {
+          glVertex2f(points[i].X, points[i].Y);
+          glVertex2f(points[i-1].X, points[i-1].Y);
+        }
+      }
+
+  glEnd();
+}
 
 void display( void )
 {
-
-/* define a point data type */
-
-    typedef GLfloat point[2];
-
-    point p; /* A point in 2-D space */
-
     glClear(GL_COLOR_BUFFER_BIT);  /*clear the window */
+    glColor3f( 1.0f, 0.0f, 0.0f );
 
-    if (!COLORS_DEFINED) {
-       red   = 255;
-       green = 0;
-       blue  = 0;
+    switch(currMode)
+    {
+      case OUTLINE:
+        drawOutline();
+        break;
+      case TESSELATION:
+        drawTesselation();
+        break;
+      case GOOD_FILL: //fill in all triangles created in tesselations
+        drawGoodFill();
+        break;
+      case BAD_FILL: //fill in one big polygon
+        drawBadFill();
+        break;
     }
 
-    glColor3ub( red, green, blue );
-
-    /* define point */
-
-    p[0] = 100;
-    p[1] = 100;
-
-    /* plot new point */
-
-        glBegin(GL_POINTS);
-            glVertex2fv(p);
-        glEnd();
-
-
-     glFlush(); /* clear buffers */
-
+    glFlush();
  }
 
-
-void drawBox( int x, int y )
+//returns true if it is successful
+bool addPoint( int x, int y )
 {
-    typedef GLfloat point[2];
-    point p;
+    Vec2 p(x,y);
 
-    glColor3ub( red, green, blue );
+    if(points.size() == 0)
+    {
+      points.push_back(p);
+      return true;
+    }
 
-    p[0] = x;
-    p[1] = y;
+    Vec2 b = points.back();
 
-        glBegin(GL_POINTS);
-            glVertex2fv(p);
-        glEnd();
-        glFlush();
-}
+    //check that this new line segment p->b does not intersect any other line segments
+    for(int i = 1; i < points.size(); i++)
+    {
+      if(intersect(p, b, points[i], points[i-1]))
+      {
+        printf ("(%d,%d) is an invalid point because it causes an intersection \n", x, y);
+        return false;
+      }
+    }
+    printf ("(%d,%d)\n", x, y);
 
-
-void eraseBox( int x, int y )
-{
-    typedef GLfloat point[2];
-    point p;
-    Vec2 v(1.0f, 2.0f);
-    glColor3f( 1.0, 1.0, 1.0 );
-
-    p[0] = x;
-    p[1] = y;
-
-    glBegin(GL_POINTS);
-      glVertex2fv(p);
+    glBegin(GL_LINES);
+        glVertex2f(p.X, p.Y);
+        glVertex2f(b.X, b.Y);
     glEnd();
     glFlush();
-}
 
 
-void clearBox()
-{
-       glClear(GL_COLOR_BUFFER_BIT);
-       glFlush();
+    points.push_back(p);
+    return true;
 }
 
 
 void mouse( int button, int state, int x, int y )
 {
+  if(state == GLUT_DOWN && currMode != OUTLINE)
+  {
+      printf("To draw you must be in outline mode.\n");
+      printf("Press l to enter outline mode.\n");
+  }
 
   if ( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
      {
-        printf ("%d   %d\n", x, y);
-        drawBox( x, WINDOW_MAX_Y - y );
+       if(polygonDrawn)
+       {
+         points.clear();
+         polygonDrawn = false;
+         glutPostRedisplay();
+       }
+       addPoint( x, WINDOW_MAX_Y - y);
      }
 
   if ( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
      {
-        printf ("%d   %d\n", x, y);
-        eraseBox( x, WINDOW_MAX_Y - y );
-     }
-
-  if ( button == GLUT_MIDDLE_BUTTON && state == GLUT_DOWN )
-     {
-        printf ("%d   %d\n", x, y);
-        clearBox();
+        if(addPoint(x, WINDOW_MAX_Y - y))
+        {
+          polygonDrawn = true;
+          glutPostRedisplay();
+        }
      }
 }
 
 
 void keyboard( unsigned char key, int x, int y )
 {
-  if ( key == 'q' || key == 'Q') exit(0);
+  if ( key == 'q' || key == 'Q')
+    exit(0);
+  else if ( key == 'f' || key == 'F')
+  {
+    if(polygonDrawn)
+    {
+      currMode = BAD_FILL;
+      glutPostRedisplay();
+    }
+    else
+    {
+      printf("Unable to fill polygon because it has not been completely drawn.\n");
+      printf("Please left click to draw the final point.\n");
+    }
+  }
+  else if ( key == 't' || key == 'T')
+  {
+    if(polygonDrawn)
+    {
+      currMode = TESSELATION;
+      glutPostRedisplay();
+    }
+    else
+    {
+      printf("Unable to tesselate polygon because it has not been completely drawn.\n");
+      printf("Please left click to draw the final point.\n");
+    }
+  }
+  else if ( key == 'p' || key == 'P')
+  {
+    if(polygonDrawn)
+    {
+      currMode = GOOD_FILL;
+      glutPostRedisplay();
+    }
+    else
+    {
+      printf("Unable to fill polygon because it has not been completely drawn.\n");
+      printf("Please left click to draw the final point.\n");
+    }
+  }
+  else if ( key == 'l' || key == 'L')
+  {
+    if(currMode != OUTLINE)
+    {
+      currMode = OUTLINE;
+      glutPostRedisplay();
+    }
+  }
 }
 
 
