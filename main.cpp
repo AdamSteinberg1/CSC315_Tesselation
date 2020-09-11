@@ -114,6 +114,7 @@ bool isClockwise(vector<Vec2> v)
     if(line1.winding(line2) < 0)
       return false;
   }
+  printf("Reversing!\n");
   return true;
 }
 
@@ -130,6 +131,31 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
   return false;
 }
 
+bool validTriangle(vector<Vec2> local_points, int index, float & winding)
+{
+  Vec2 line1 = local_points[index] - local_points[index+1];
+  Vec2 line2 = local_points[index+2] - local_points[index+1];
+  winding = line1.winding(line2);
+  if (winding >= 0)
+    return false;
+
+  if(diagonalIntersect(local_points, index))
+    return false;
+
+  if(index+3 < local_points.size())
+  {
+    Vec2 nextLine = local_points[index+3] - local_points[index+2];
+    Vec2 imminentLine = local_points[index] - local_points[index + 2];
+    if(imminentLine.dot(line2) > nextLine.dot(line2))
+    {
+      printf("Mistake!"); //TODO remove
+      return false;
+    }
+  }
+
+  return true;
+}
+
 //returns the triangle list
 vector< array<Vec2, 3> > tesselate()
 {
@@ -143,40 +169,23 @@ vector< array<Vec2, 3> > tesselate()
   int index = 0; //we are checking the three points starting at index
   while(local_points.size() > 3)
   {
-    Vec2 line1 = local_points[index] - local_points[index+1];
-    Vec2 line2 = local_points[index+2] - local_points[index+1];
-    float winding = line1.winding(line2);
-    if(winding < 0 && !diagonalIntersect(local_points, index)) //ccw winding and the diagonal does not intersect any line segments
-    {
 
-        if(index+3 < local_points.size())
-        {
-          Vec2 nextLine = local_points[index+3] - local_points[index+2];
-          Vec2 imminentLine = local_points[index] - local_points[index + 2];
-          if(imminentLine.dot(line2) > nextLine.dot(line2))
-          {
-            printf("Mistake!");
-          }
-        }
-
-        array<Vec2, 3> triangle = {local_points[index], local_points[index+1], local_points[index+2]};
-        triangles.push_back(triangle);
-        //remove middle point
-        local_points.erase(local_points.begin() + index+ 1);
-        index = 0;
-    }
-    else if(winding == 0)
+    for(int i = 0; i < local_points.size()-2; i++)
     {
-      local_points.erase(local_points.begin() + index + 1);
-      index = 0;
-    }
-    else
-    {
-      index++;
-      int n = local_points.size();
-      if(index + 2 >= n && n > 3)
+      float winding;
+      if(validTriangle(local_points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
       {
-        printf("Seg Fault Time!\n"); //TODO don't leave this in
+          array<Vec2, 3> triangle = {local_points[i], local_points[i+1], local_points[i+2]};
+          triangles.push_back(triangle);
+
+          //remove middle point
+          local_points.erase(local_points.begin() + i + 1);
+          break;
+      }
+      else if(winding == 0)
+      {
+        local_points.erase(local_points.begin() + i + 1);
+        break;
       }
     }
   }
