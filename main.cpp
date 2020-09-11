@@ -3,6 +3,7 @@
 #include <GL/glut.h>
 #include <stdio.h>
 #include <vector>
+#include <array>
 #include "Vec2.h"
 
 // These are defined in a global scope
@@ -102,9 +103,75 @@ void drawOutline()
   glEnd();
 }
 
+//returns the triangle list
+std::vector< std::array<Vec2, 3> > tesselate()
+{
+  std::vector< std::array<Vec2, 3> > triangles;
+  std::vector<Vec2> local_points = points; //we need a local copy because we don't want to destroy our points list
+
+  int index = 0; //we are checking the three points starting at index
+  while(local_points.size() > 3)
+  {
+    Vec2 line1 = local_points[index] - local_points[index+1];
+    Vec2 line2 = local_points[index+2] - local_points[index+1];
+    float winding = line1.winding(line2);
+    if(winding < 0) //ccw winding
+    {
+      bool intersectionExist = false;
+      //check for intersections in the rest of the points
+      for(int i = index+4; i < local_points.size(); i++)
+      {
+        if(intersect(local_points[index], local_points[index+2], local_points[i], local_points[i-1]))
+        {
+          intersectionExist = true;
+        }
+      }
+
+      if(!intersectionExist)
+      {
+        std::array<Vec2, 3> triangle = {local_points[index], local_points[index+1], local_points[index+2]};
+        triangles.push_back(triangle);
+        //remove middle point
+        local_points.erase(local_points.begin() + index+ 1);
+      }
+    }
+    else if(winding == 0)
+    {
+      local_points.erase(local_points.begin() + index+ 1);
+    }
+    else
+    {
+      index++;
+    }
+  }
+  std::array<Vec2, 3> finalTriangle = {local_points[0], local_points[1], local_points[2]};
+  triangles.push_back(finalTriangle);
+
+  for(int i = 0; i < triangles.size(); i++)
+  {
+    printf("Triangle %d: (%f,%f), (%f,%f) (%f,%f) \n", i, triangles[i][0].X, triangles[i][0].Y, triangles[i][1].X, triangles[i][1].Y, triangles[i][2].X, triangles[i][2].Y);
+  }
+
+  return triangles;
+
+}
+
 void drawTesselation()
 {
+  std::vector< std::array<Vec2, 3> > triangles = tesselate();
+  for(int i = 0; i < triangles.size(); i++)
+  {
+    glBegin(GL_LINES);
+        glVertex2f(triangles[i][0].X, triangles[i][0].Y);
+        glVertex2f(triangles[i][1].X, triangles[i][1].Y);
 
+        glVertex2f(triangles[i][1].X, triangles[i][1].Y);
+        glVertex2f(triangles[i][2].X, triangles[i][2].Y);
+
+        glVertex2f(triangles[i][2].X, triangles[i][2].Y);        
+        glVertex2f(triangles[i][0].X, triangles[i][0].Y);
+    glEnd();
+  }
 }
 
 void drawGoodFill()
