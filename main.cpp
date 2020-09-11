@@ -3,13 +3,15 @@
 #include <GL/glut.h>
 #include <stdio.h>
 #include <vector>
+#include <algorithm>
 #include <array>
 #include "Vec2.h"
 
+using namespace std;
 // These are defined in a global scope
 
 int COLORS_DEFINED;
-std::vector<Vec2> points;
+vector<Vec2> points;
 bool polygonDrawn = false;
 enum Mode {OUTLINE, TESSELATION, BAD_FILL, GOOD_FILL};
 Mode currMode = OUTLINE;
@@ -103,11 +105,40 @@ void drawOutline()
   glEnd();
 }
 
-//returns the triangle list
-std::vector< std::array<Vec2, 3> > tesselate()
+bool isClockwise(vector<Vec2> v)
 {
-  std::vector< std::array<Vec2, 3> > triangles;
-  std::vector<Vec2> local_points = points; //we need a local copy because we don't want to destroy our points list
+  for(int i = 1; i < v.size() - 1; i++)
+  {
+    Vec2 line1 = v[i-1] - v[i];
+    Vec2 line2 = v[i+1] - v[i];
+    if(line1.winding(line2) < 0)
+      return false;
+  }
+  return true;
+}
+
+//returns true if the diagonal line segment intersects any other line segments
+bool diagonalIntersect(vector<Vec2> local_points, int index)
+{
+  for(int i = index+4; i < local_points.size(); i++)
+  {
+    if(intersect(local_points[index], local_points[index+2], local_points[i], local_points[i-1]))
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+//returns the triangle list
+vector< array<Vec2, 3> > tesselate()
+{
+  vector< array<Vec2, 3> > triangles;
+
+  vector<Vec2> local_points = points; //we need a local copy because we don't want to destroy our points list
+
+  if(isClockwise(local_points)) //if the points are not defined in a CCW manner, then reverse them
+    reverse(local_points.begin(), local_points.end());
 
   int index = 0; //we are checking the three points starting at index
   while(local_points.size() > 3)
@@ -115,36 +146,41 @@ std::vector< std::array<Vec2, 3> > tesselate()
     Vec2 line1 = local_points[index] - local_points[index+1];
     Vec2 line2 = local_points[index+2] - local_points[index+1];
     float winding = line1.winding(line2);
-    if(winding < 0) //ccw winding
+    if(winding < 0 && !diagonalIntersect(local_points, index)) //ccw winding and the diagonal does not intersect any line segments
     {
-      bool intersectionExist = false;
-      //check for intersections in the rest of the points
-      for(int i = index+4; i < local_points.size(); i++)
-      {
-        if(intersect(local_points[index], local_points[index+2], local_points[i], local_points[i-1]))
-        {
-          intersectionExist = true;
-        }
-      }
 
-      if(!intersectionExist)
-      {
-        std::array<Vec2, 3> triangle = {local_points[index], local_points[index+1], local_points[index+2]};
+        if(index+3 < local_points.size())
+        {
+          Vec2 nextLine = local_points[index+3] - local_points[index+2];
+          Vec2 imminentLine = local_points[index] - local_points[index + 2];
+          if(imminentLine.dot(line2) > nextLine.dot(line2))
+          {
+            printf("Mistake!");
+          }
+        }
+
+        array<Vec2, 3> triangle = {local_points[index], local_points[index+1], local_points[index+2]};
         triangles.push_back(triangle);
         //remove middle point
         local_points.erase(local_points.begin() + index+ 1);
-      }
+        index = 0;
     }
     else if(winding == 0)
     {
-      local_points.erase(local_points.begin() + index+ 1);
+      local_points.erase(local_points.begin() + index + 1);
+      index = 0;
     }
     else
     {
       index++;
+      int n = local_points.size();
+      if(index + 2 >= n && n > 3)
+      {
+        printf("Seg Fault Time!\n"); //TODO don't leave this in
+      }
     }
   }
-  std::array<Vec2, 3> finalTriangle = {local_points[0], local_points[1], local_points[2]};
+  array<Vec2, 3> finalTriangle = {local_points[0], local_points[1], local_points[2]};
   triangles.push_back(finalTriangle);
 
   for(int i = 0; i < triangles.size(); i++)
@@ -158,7 +194,7 @@ std::vector< std::array<Vec2, 3> > tesselate()
 
 void drawTesselation()
 {
-  std::vector< std::array<Vec2, 3> > triangles = tesselate();
+  vector< array<Vec2, 3> > triangles = tesselate();
   for(int i = 0; i < triangles.size(); i++)
   {
     glBegin(GL_LINES);
@@ -168,7 +204,7 @@ void drawTesselation()
         glVertex2f(triangles[i][1].X, triangles[i][1].Y);
         glVertex2f(triangles[i][2].X, triangles[i][2].Y);
 
-        glVertex2f(triangles[i][2].X, triangles[i][2].Y);        
+        glVertex2f(triangles[i][2].X, triangles[i][2].Y);
         glVertex2f(triangles[i][0].X, triangles[i][0].Y);
     glEnd();
   }
@@ -225,7 +261,7 @@ void display( void )
  }
 
 //returns true if it is successful
-bool addPoint( int x, int y )
+bool addPoint( int x, int y, bool isLast = false)
 {
     Vec2 p(x,y);
 
@@ -245,6 +281,13 @@ bool addPoint( int x, int y )
         printf ("(%d,%d) is an invalid point because it causes an intersection \n", x, y);
         return false;
       }
+      //if it's the last point we must also make sure the line segment from the first to last point does not intersect anything
+      if(isLast && intersect(p, points[0], points[i], points[i-1]))
+      {
+        printf ("(%d,%d) is an invalid point because it causes an intersection \n", x, y);
+        return false;
+      }
+
     }
     printf ("(%d,%d)\n", x, y);
 
@@ -266,6 +309,7 @@ void mouse( int button, int state, int x, int y )
   {
       printf("To draw you must be in outline mode.\n");
       printf("Press l to enter outline mode.\n");
+      return;
   }
 
   if ( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
@@ -281,7 +325,7 @@ void mouse( int button, int state, int x, int y )
 
   if ( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
      {
-        if(addPoint(x, WINDOW_MAX_Y - y))
+        if(addPoint(x, WINDOW_MAX_Y - y, true))
         {
           polygonDrawn = true;
           glutPostRedisplay();

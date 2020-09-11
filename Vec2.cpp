@@ -12,9 +12,15 @@ Vec2::Vec2()
 }
 
 //returns the z component of the cross product: thisVector X otherVector
-float Vec2::direction(const Vec2 otherVector)
+float Vec2::winding(const Vec2 otherVector)
 {
   return (X * otherVector.Y - Y * otherVector.X);
+}
+
+
+float Vec2::dot(const Vec2 otherVector)
+{
+  return X * otherVector.X + Y * otherVector.Y;
 }
 
 Vec2 Vec2::operator+(const Vec2 otherVector)

@@ -6,7 +6,8 @@ class Vec2
     float Y;
     Vec2(float x, float y);
     Vec2();
-    float direction(const Vec2 otherVector);
+    float winding(const Vec2 otherVector);
+    float dot(const Vec2 otherVector);
     Vec2 operator+(const Vec2 otherVector);
     Vec2 operator-(const Vec2 otherVector);
 };
