@@ -5,16 +5,17 @@
 #include <vector>
 #include <algorithm>
 #include <array>
+#include <math.h>
 #include "Vec2.h"
 
 using namespace std;
 // These are defined in a global scope
 
-int COLORS_DEFINED;
 vector<Vec2> points;
 bool polygonDrawn = false;
 enum Mode {OUTLINE, TESSELATION, BAD_FILL, GOOD_FILL};
 Mode currMode = OUTLINE;
+vector< array<Vec2, 3> > triangles;
 
 // Specity the values to place and size the window on the screen
 
@@ -70,10 +71,6 @@ void myInit(void)
 /* standard OpenGL attributes */
 
       glClearColor(1.0, 1.0, 1.0, 1.0); /* white background */
-      glColor3f(1.0, 0.0, 0.0); /* draw in red */
-      glPointSize(10.0);
-
-      COLORS_DEFINED = 0;
 
 /* set up viewing window with origin lower left */
 
@@ -84,12 +81,25 @@ void myInit(void)
       glMatrixMode(GL_MODELVIEW);
 }
 
+void randomizeColor()
+{
+  //sin^2 returns a value between 0 and 1
+  //we need to offset each color by a third of a revolution around a circle, so it is not always white
+  float r = rand();
+  float offset = 2 * M_PI / 3;
+  float red = sin(r) * sin(r);
+  float green = sin(r + offset) * sin(r + offset);
+  float blue = sin(r + 2* offset) * sin(r + 2 * offset);
+  glColor3f(red, green, blue);
+}
+
 void drawOutline()
 {
   glBegin(GL_LINES);
       int n = points.size();
       for(int i =0; i < n; i++)
       {
+        randomizeColor();
         if( i == 0)
         {
           glVertex2f(points[i].X, points[i].Y);
@@ -105,25 +115,25 @@ void drawOutline()
   glEnd();
 }
 
+//returns true if the points are defined in a clockwise manner
 bool isClockwise(vector<Vec2> v)
 {
-  for(int i = 1; i < v.size() - 1; i++)
+  float sum = 0;
+  int n = v.size();
+  for(int i = 0; i < n; i++)
   {
-    Vec2 line1 = v[i-1] - v[i];
-    Vec2 line2 = v[i+1] - v[i];
-    if(line1.winding(line2) < 0)
-      return false;
+    sum += (v[(i+1)%n].X - v[i].X) * (v[(i+1)%n].Y + v[i].Y);
   }
-  printf("Reversing!\n");
-  return true;
+  return sum > 0;
 }
 
 //returns true if the diagonal line segment intersects any other line segments
 bool diagonalIntersect(vector<Vec2> local_points, int index)
 {
-  for(int i = index+4; i < local_points.size(); i++)
+  int n = local_points.size();
+  for(int i = 1; i < n; i++)
   {
-    if(intersect(local_points[index], local_points[index+2], local_points[i], local_points[i-1]))
+    if(intersect(local_points[index], local_points[(index+2)%n], local_points[i], local_points[i-1]))
     {
       return true;
     }
@@ -133,24 +143,29 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
 
 bool validTriangle(vector<Vec2> local_points, int index, float & winding)
 {
-  Vec2 line1 = local_points[index] - local_points[index+1];
-  Vec2 line2 = local_points[index+2] - local_points[index+1];
+  int n = local_points.size();
+
+  //check that it has a ccw winding
+  Vec2 line1 = local_points[index] - local_points[(index+1)%n];
+  Vec2 line2 = local_points[(index+2)%n] - local_points[(index+1)%n];
   winding = line1.winding(line2);
   if (winding >= 0)
-    return false;
-
-  if(diagonalIntersect(local_points, index))
-    return false;
-
-  if(index+3 < local_points.size())
   {
-    Vec2 nextLine = local_points[index+3] - local_points[index+2];
-    Vec2 imminentLine = local_points[index] - local_points[index + 2];
-    if(imminentLine.dot(line2) > nextLine.dot(line2))
-    {
-      printf("Mistake!"); //TODO remove
-      return false;
-    }
+    return false;
+  }
+
+  //check that the diagonal does not intersect anything
+  if(diagonalIntersect(local_points, index))
+  {
+    return false;
+  }
+
+  //check the special case where it trys to draws a line that is outside the polygon
+  Vec2 nextLine = local_points[(index+3)%n] - local_points[(index+2)%n];
+  Vec2 imminentLine = local_points[index] - local_points[(index + 2)%n];
+  if(imminentLine.angleBetween(line2) < nextLine.angleBetween(line2))
+  {
+    return false;
   }
 
   return true;
@@ -166,36 +181,33 @@ vector< array<Vec2, 3> > tesselate()
   if(isClockwise(local_points)) //if the points are not defined in a CCW manner, then reverse them
     reverse(local_points.begin(), local_points.end());
 
-  int index = 0; //we are checking the three points starting at index
-  while(local_points.size() > 3)
+  int n = local_points.size();
+  while(n > 3)
   {
 
-    for(int i = 0; i < local_points.size()-2; i++)
+    for(int i = 0; i < local_points.size(); i++)
     {
       float winding;
       if(validTriangle(local_points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
       {
-          array<Vec2, 3> triangle = {local_points[i], local_points[i+1], local_points[i+2]};
+          array<Vec2, 3> triangle = {local_points[i], local_points[(i+1)%n], local_points[(i+2)%n]};
           triangles.push_back(triangle);
 
           //remove middle point
-          local_points.erase(local_points.begin() + i + 1);
+          local_points.erase(local_points.begin() + (i + 1)%n);
+          n--;
           break;
       }
       else if(winding == 0)
       {
-        local_points.erase(local_points.begin() + i + 1);
-        break;
+          local_points.erase(local_points.begin() + (i + 1)%n);
+          n--;
+          break;
       }
     }
   }
   array<Vec2, 3> finalTriangle = {local_points[0], local_points[1], local_points[2]};
   triangles.push_back(finalTriangle);
-
-  for(int i = 0; i < triangles.size(); i++)
-  {
-    printf("Triangle %d: (%f,%f), (%f,%f) (%f,%f) \n", i, triangles[i][0].X, triangles[i][0].Y, triangles[i][1].X, triangles[i][1].Y, triangles[i][2].X, triangles[i][2].Y);
-  }
 
   return triangles;
 
@@ -203,9 +215,12 @@ vector< array<Vec2, 3> > tesselate()
 
 void drawTesselation()
 {
-  vector< array<Vec2, 3> > triangles = tesselate();
+  if(triangles.empty())
+    triangles = tesselate();
+
   for(int i = 0; i < triangles.size(); i++)
   {
+    randomizeColor();
     glBegin(GL_LINES);
         glVertex2f(triangles[i][0].X, triangles[i][0].Y);
         glVertex2f(triangles[i][1].X, triangles[i][1].Y);
@@ -221,11 +236,23 @@ void drawTesselation()
 
 void drawGoodFill()
 {
+  if(triangles.empty())
+    triangles = tesselate();
 
+  for (int i = 0; i < triangles.size(); i++)
+  {
+    randomizeColor();
+    glBegin(GL_POLYGON);
+        glVertex2f(triangles[i][0].X, triangles[i][0].Y);
+        glVertex2f(triangles[i][1].X, triangles[i][1].Y);
+        glVertex2f(triangles[i][2].X, triangles[i][2].Y);
+    glEnd();
+  }
 }
 
 void drawBadFill()
 {
+  randomizeColor();
   glBegin(GL_POLYGON);
       int n = points.size();
       for(int i =0; i < n; i++)
@@ -248,7 +275,6 @@ void drawBadFill()
 void display( void )
 {
     glClear(GL_COLOR_BUFFER_BIT);  /*clear the window */
-    glColor3f( 1.0f, 0.0f, 0.0f );
 
     switch(currMode)
     {
@@ -300,6 +326,7 @@ bool addPoint( int x, int y, bool isLast = false)
     }
     printf ("(%d,%d)\n", x, y);
 
+    randomizeColor();
     glBegin(GL_LINES);
         glVertex2f(p.X, p.Y);
         glVertex2f(b.X, b.Y);
@@ -326,6 +353,7 @@ void mouse( int button, int state, int x, int y )
        if(polygonDrawn)
        {
          points.clear();
+         triangles.clear();
          polygonDrawn = false;
          glutPostRedisplay();
        }

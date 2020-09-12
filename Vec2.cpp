@@ -1,6 +1,7 @@
 #include "Vec2.h"
+#include <math.h>
 
-Vec2::Vec2(float x, float y)
+Vec2::Vec2(int x, int y)
 {
   X = x;
   Y = y;
@@ -12,15 +13,25 @@ Vec2::Vec2()
 }
 
 //returns the z component of the cross product: thisVector X otherVector
-float Vec2::winding(const Vec2 otherVector)
+int Vec2::winding(const Vec2 otherVector) const
 {
   return (X * otherVector.Y - Y * otherVector.X);
 }
 
 
-float Vec2::dot(const Vec2 otherVector)
+int Vec2::dot(const Vec2 otherVector) const
 {
   return X * otherVector.X + Y * otherVector.Y;
+}
+
+float Vec2::magnitude() const
+{
+  return sqrt(X*X + Y*Y);
+}
+
+float Vec2::angleBetween(const Vec2 otherVector) const
+{
+  return acos(dot(otherVector) / (magnitude() * otherVector.magnitude())); //in radians
 }
 
 Vec2 Vec2::operator+(const Vec2 otherVector)
