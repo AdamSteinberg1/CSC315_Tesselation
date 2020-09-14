@@ -84,12 +84,12 @@ void myInit(void)
 void randomizeColor()
 {
   //sin^2 returns a value between 0 and 1
-  //we need to offset each color by a third of a revolution around a circle, so it is not always white
-  float r = rand();
+  //we need to offset each color by a third of a revolution around a circle, so it's not just grays
+  float r = 2 * M_PI * rand() / RAND_MAX; //random float between 0 and 2 pi
   float offset = 2 * M_PI / 3;
   float red = sin(r) * sin(r);
   float green = sin(r + offset) * sin(r + offset);
-  float blue = sin(r + 2* offset) * sin(r + 2 * offset);
+  float blue = sin(r + 2 * offset) * sin(r + 2 * offset);
   glColor3f(red, green, blue);
 }
 
