@@ -185,7 +185,7 @@ vector< array<Vec2, 3> > tesselate()
   while(n > 3)
   {
 
-    for(int i = 0; i < local_points.size(); i++)
+    for(int i = 0; i < n; i++)
     {
       float winding;
       if(validTriangle(local_points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
@@ -200,9 +200,14 @@ vector< array<Vec2, 3> > tesselate()
       }
       else if(winding == 0)
       {
+          printf("winding = 0\n");
           local_points.erase(local_points.begin() + (i + 1)%n);
           n--;
           break;
+      }
+      if(i == n-1)
+      {
+        printf("stuck :(\n");
       }
     }
   }
