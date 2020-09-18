@@ -11,6 +11,7 @@
 using namespace std;
 // These are defined in a global scope
 
+bool foundError = false;
 vector<Vec2> points;
 bool polygonDrawn = false;
 enum Mode {OUTLINE, TESSELATION, BAD_FILL, GOOD_FILL};
@@ -33,7 +34,7 @@ const float WORLD_COORDINATE_MAX_Y = WINDOW_MAX_Y;
 
 
 //determinate of 2x2 matrix
-float det(float a, float b, float c, float d)
+int det(int a, int b, int c, int d)
 {
   /*
     | a b |
@@ -45,12 +46,12 @@ float det(float a, float b, float c, float d)
 //returns true if two line segments intersect
 bool intersect(Vec2 startPoint1, Vec2 endPoint1, Vec2 startPoint2, Vec2 endPoint2)
 {
-  float den = det(endPoint1.X - startPoint1.X, -(endPoint2.X - startPoint2.X), endPoint1.Y - startPoint1.Y,  -(endPoint2.Y - startPoint2.Y));
+  int den = det(endPoint1.X - startPoint1.X, -(endPoint2.X - startPoint2.X), endPoint1.Y - startPoint1.Y,  -(endPoint2.Y - startPoint2.Y));
   if(den == 0) //parallel line segments
     return false;
 
-  float u_a = det(startPoint2.X - startPoint1.X, -(endPoint2.X - startPoint2.X), startPoint2.Y - startPoint1.Y, -(endPoint2.Y - startPoint2.Y)) / den;
-  float u_b = det(endPoint1.X - startPoint1.X, startPoint2.X - startPoint1.X, endPoint1.Y - startPoint1.Y, startPoint2.Y - startPoint1.Y) / den;
+  float u_a = det(startPoint2.X - startPoint1.X, -(endPoint2.X - startPoint2.X), startPoint2.Y - startPoint1.Y, -(endPoint2.Y - startPoint2.Y)) / float(den);
+  float u_b = det(endPoint1.X - startPoint1.X, startPoint2.X - startPoint1.X, endPoint1.Y - startPoint1.Y, startPoint2.Y - startPoint1.Y) / float(den);
 
   return u_a > 0 && u_a < 1 && u_b > 0 && u_b < 1;
 }
@@ -118,7 +119,7 @@ void drawOutline()
 //returns true if the points are defined in a clockwise manner
 bool isClockwise(vector<Vec2> v)
 {
-  float sum = 0;
+  int sum = 0;
   int n = v.size();
   for(int i = 0; i < n; i++)
   {
@@ -141,7 +142,7 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
   return false;
 }
 
-bool validTriangle(vector<Vec2> local_points, int index, float & winding)
+bool validTriangle(vector<Vec2> local_points, int index, int & winding)
 {
   int n = local_points.size();
 
@@ -151,25 +152,62 @@ bool validTriangle(vector<Vec2> local_points, int index, float & winding)
   winding = line1.winding(line2);
   if (winding >= 0)
   {
+    if(foundError)
+      printf("not ccw winding\n");
     return false;
   }
 
   //check that the diagonal does not intersect anything
   if(diagonalIntersect(local_points, index))
   {
+    if(foundError)
+      printf("diagonal intersection\n");
     return false;
   }
 
   //check the special case where it trys to draws a line that is outside the polygon
-  Vec2 nextLine = local_points[(index+3)%n] - local_points[(index+2)%n];
-  Vec2 imminentLine = local_points[index] - local_points[(index + 2)%n];
-  if(imminentLine.angleBetween(line2) < nextLine.angleBetween(line2))
+  if(index + 3 < n)
   {
-    return false;
+    Vec2 nextLine = local_points[(index+3)%n] - local_points[(index+2)%n];
+    Vec2 imminentLine = local_points[index] - local_points[(index + 2)%n];
+    if(imminentLine.angleBetween(line2) < nextLine.angleBetween(line2))
+    {
+      if(foundError)
+        printf("special case\n");
+      return false;
+    }
   }
 
   return true;
 }
+
+void drawErrorPoints(vector<Vec2> badPoints)
+{
+  glClear(GL_COLOR_BUFFER_BIT);  /*clear the window */
+  glBegin(GL_LINES);
+      int n = badPoints.size();
+      for(int i =0; i < n; i++)
+      {
+        if( i == 0)
+        {
+          glVertex2f(badPoints[i].X, badPoints[i].Y);
+          glVertex2f(badPoints[n-1].X, badPoints[n-1].Y);
+        }
+        else
+        {
+          glVertex2f(badPoints[i].X, badPoints[i].Y);
+          glVertex2f(badPoints[i-1].X, badPoints[i-1].Y);
+        }
+      }
+
+  glEnd();
+  glFlush();
+  while(true)
+  {
+
+  }
+}
+
 
 //returns the triangle list
 vector< array<Vec2, 3> > tesselate()
@@ -187,7 +225,7 @@ vector< array<Vec2, 3> > tesselate()
 
     for(int i = 0; i < n; i++)
     {
-      float winding;
+      int winding;
       if(validTriangle(local_points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
       {
           array<Vec2, 3> triangle = {local_points[i], local_points[(i+1)%n], local_points[(i+2)%n]};
@@ -196,18 +234,25 @@ vector< array<Vec2, 3> > tesselate()
           //remove middle point
           local_points.erase(local_points.begin() + (i + 1)%n);
           n--;
-          break;
+          break; //start over
       }
       else if(winding == 0)
       {
           printf("winding = 0\n");
           local_points.erase(local_points.begin() + (i + 1)%n);
           n--;
-          break;
+          break; //start over
       }
       if(i == n-1)
       {
         printf("stuck :(\n");
+        for(int i =0; i < local_points.size(); i++)
+        {
+          printf("point %d: %d,%d\n", i, local_points[i].X, local_points[i].Y);
+        }
+        if(foundError)
+          drawErrorPoints(local_points);
+        foundError = true;
       }
     }
   }
@@ -217,6 +262,9 @@ vector< array<Vec2, 3> > tesselate()
   return triangles;
 
 }
+
+
+
 
 void drawTesselation()
 {
