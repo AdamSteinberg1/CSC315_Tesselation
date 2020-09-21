@@ -263,13 +263,48 @@ vector< array<Vec2, 3> > tesselate()
 
 }
 
+vector<array<Vec2, 3> > tesselateR(vector<Vec2> points)
+{
+  vector< array<Vec2, 3> > triangles;
+  int n = points.size();
+  if (n == 3)
+  {
+    array<Vec2, 3> triangle = {points[0], points[1], points[2]};
+    triangles.push_back(triangle);
+    return triangles;
+  }
+
+  for(int i = 0; i < n; i++)
+  {
+    int winding;
+    if(validTriangle(points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
+    {
+        array<Vec2, 3> triangle = {points[i], points[(i+1)%n], points[(i+2)%n]};
+        triangles.push_back(triangle);
+        //remove middle point
+        points.erase(points.begin() + (i + 1)%n);
+
+        vector<array<Vec2, 3 > > rest = tesselateR(points);
+        triangles.insert(triangles.end(), rest.begin(), rest.end());
+        return triangles;
+    }
+    else if(winding == 0)
+    {
+        points.erase(points.begin() + (i + 1)%n);
+        return tesselateR(points);
+    }
+
+    
+  }
+}
+
 
 
 
 void drawTesselation()
 {
   if(triangles.empty())
-    triangles = tesselate();
+    triangles = tesselateR(points);
 
   for(int i = 0; i < triangles.size(); i++)
   {
