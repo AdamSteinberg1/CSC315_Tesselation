@@ -132,9 +132,9 @@ bool isClockwise(vector<Vec2> v)
 bool diagonalIntersect(vector<Vec2> local_points, int index)
 {
   int n = local_points.size();
-  for(int i = 1; i < n; i++)
+  for(int i = 0; i < n; i++)
   {
-    if(intersect(local_points[index], local_points[(index+2)%n], local_points[i], local_points[i-1]))
+    if(intersect(local_points[index], local_points[(index+2)%n], local_points[i], local_points[(i+1)%n]))
     {
       return true;
     }
@@ -265,6 +265,9 @@ vector< array<Vec2, 3> > tesselate()
 
 vector<array<Vec2, 3> > tesselateR(vector<Vec2> points)
 {
+  if(isClockwise(points)) //if the points are not defined in a CCW manner, then reverse them
+    reverse(points.begin(), points.end());
+
   vector< array<Vec2, 3> > triangles;
   int n = points.size();
   if (n == 3)
@@ -293,9 +296,10 @@ vector<array<Vec2, 3> > tesselateR(vector<Vec2> points)
         points.erase(points.begin() + (i + 1)%n);
         return tesselateR(points);
     }
-
-    
   }
+  printf("Error: Can't find point to remove\n");
+  drawErrorPoints(points);
+  return triangles;
 }
 
 
