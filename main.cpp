@@ -174,7 +174,7 @@ bool validTriangle(vector<Vec2> local_points, int index, int & winding)
     {
       if(foundError)
         printf("special case\n");
-      return false;
+      //return false;
     }
   }
 
