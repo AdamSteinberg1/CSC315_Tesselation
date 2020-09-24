@@ -10,7 +10,6 @@
 
 using namespace std;
 // These are defined in a global scope
-
 bool foundError = false;
 vector<Vec2> points;
 bool polygonDrawn = false;
@@ -134,6 +133,16 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
   int n = local_points.size();
   for(int i = 0; i < n; i++)
   {
+    //first make sure that we don't check if any of the points are the same
+    if(i == index)
+      continue;
+    if(i == (index + 2)%n)
+      continue;
+    if((i+1)%n == index)
+      continue;
+    if((i+1)%n == (index+2)%n)
+      continue;
+
     if(intersect(local_points[index], local_points[(index+2)%n], local_points[i], local_points[(i+1)%n]))
     {
       return true;
@@ -142,13 +151,13 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
   return false;
 }
 
-bool validTriangle(vector<Vec2> local_points, int index, int & winding)
+bool validTriangle(vector<Vec2> points, int index, int & winding)
 {
-  int n = local_points.size();
+  int n = points.size();
 
   //check that it has a ccw winding
-  Vec2 line1 = local_points[index] - local_points[(index+1)%n];
-  Vec2 line2 = local_points[(index+2)%n] - local_points[(index+1)%n];
+  Vec2 line1 = points[index] - points[(index+1)%n];
+  Vec2 line2 = points[(index+2)%n] - points[(index+1)%n];
   winding = line1.winding(line2);
   if (winding >= 0)
   {
@@ -158,7 +167,7 @@ bool validTriangle(vector<Vec2> local_points, int index, int & winding)
   }
 
   //check that the diagonal does not intersect anything
-  if(diagonalIntersect(local_points, index))
+  if(diagonalIntersect(points, index))
   {
     if(foundError)
       printf("diagonal intersection\n");
@@ -166,16 +175,14 @@ bool validTriangle(vector<Vec2> local_points, int index, int & winding)
   }
 
   //check the special case where it trys to draws a line that is outside the polygon
-  if(index + 3 < n)
+  Vec2 nextLine = points[(index+3)%n] - points[(index+2)%n];
+  Vec2 imminentLine = points[index] - points[(index + 2)%n];
+  if(imminentLine.angleBetween(-line2) > nextLine.angleBetween(-line2))
   {
-    Vec2 nextLine = local_points[(index+3)%n] - local_points[(index+2)%n];
-    Vec2 imminentLine = local_points[index] - local_points[(index + 2)%n];
-    if(imminentLine.angleBetween(line2) < nextLine.angleBetween(line2))
-    {
-      if(foundError)
-        printf("special case\n");
-      //return false;
-    }
+
+    if(foundError)
+      printf("special case\n");
+    return false;
   }
 
   return true;
@@ -188,6 +195,11 @@ void drawErrorPoints(vector<Vec2> badPoints)
       int n = badPoints.size();
       for(int i =0; i < n; i++)
       {
+        float r = -i/float(n) + 1;
+        glColor3f(r, 0.0f, 0.0f);
+
+
+
         if( i == 0)
         {
           glVertex2f(badPoints[i].X, badPoints[i].Y);
@@ -297,7 +309,14 @@ vector<array<Vec2, 3> > tesselateR(vector<Vec2> points)
         return tesselateR(points);
     }
   }
+
+
   printf("Error: Can't find point to remove\n");
+  if(!foundError)
+  {
+    foundError = true;
+    return tesselateR(points);
+  }
   drawErrorPoints(points);
   return triangles;
 }

@@ -12,4 +12,5 @@ class Vec2
     float angleBetween(const Vec2 otherVector) const;
     Vec2 operator+(const Vec2 otherVector);
     Vec2 operator-(const Vec2 otherVector);
+    Vec2 operator-();
 };
