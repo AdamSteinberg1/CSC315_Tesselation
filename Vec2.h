@@ -8,8 +8,8 @@ class Vec2
     Vec2();
     int winding(const Vec2 otherVector) const;
     int dot(const Vec2 otherVector) const;
-    float magnitude() const;
-    float angleBetween(const Vec2 otherVector) const;
+    double magnitude() const;
+    double angleBetween(const Vec2 otherVector) const;
     Vec2 operator+(const Vec2 otherVector);
     Vec2 operator-(const Vec2 otherVector);
     Vec2 operator-();

@@ -151,6 +151,13 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
   return false;
 }
 
+int sgn(int num) //returns 1 if num is postiive, -1 if num is negative, and 0 if num is 0
+{
+  if (num > 0) return 1;
+  if (num < 0) return -1;
+  return 0;
+}
+
 bool validTriangle(vector<Vec2> points, int index, int & winding)
 {
   int n = points.size();
@@ -161,16 +168,12 @@ bool validTriangle(vector<Vec2> points, int index, int & winding)
   winding = line1.winding(line2);
   if (winding >= 0)
   {
-    if(foundError)
-      printf("not ccw winding\n");
     return false;
   }
 
   //check that the diagonal does not intersect anything
   if(diagonalIntersect(points, index))
   {
-    if(foundError)
-      printf("diagonal intersection\n");
     return false;
   }
 
@@ -179,10 +182,10 @@ bool validTriangle(vector<Vec2> points, int index, int & winding)
   Vec2 imminentLine = points[index] - points[(index + 2)%n];
   if(imminentLine.angleBetween(-line2) > nextLine.angleBetween(-line2))
   {
-
-    if(foundError)
-      printf("special case\n");
-    return false;
+    if(sgn(imminentLine.winding(line2)) == sgn(nextLine.winding(line2))) //they must be turning the same way for it to be invalid
+    {
+      return false;
+    }
   }
 
   return true;
@@ -190,34 +193,27 @@ bool validTriangle(vector<Vec2> points, int index, int & winding)
 
 void drawErrorPoints(vector<Vec2> badPoints)
 {
+  printf("Encountered a fatal error. The program cannot find any ears to clip.\n");
+  printf("The program cannot figure out how to tesselate the displayed polygon.\n");
+  printf("Please force quit the program.");
+  printf("The polygon's points are:\n");
   glClear(GL_COLOR_BUFFER_BIT);  /*clear the window */
   glBegin(GL_LINES);
       int n = badPoints.size();
       for(int i =0; i < n; i++)
       {
+        printf("(%d,%d)\n", badPoints[i].X, badPoints[i].Y);
         float r = -i/float(n) + 1;
         glColor3f(r, 0.0f, 0.0f);
-
-
-
-        if( i == 0)
         {
           glVertex2f(badPoints[i].X, badPoints[i].Y);
-          glVertex2f(badPoints[n-1].X, badPoints[n-1].Y);
-        }
-        else
-        {
-          glVertex2f(badPoints[i].X, badPoints[i].Y);
-          glVertex2f(badPoints[i-1].X, badPoints[i-1].Y);
+          glVertex2f(badPoints[(i+1)%n].X, badPoints[(i+1)%n].Y);
         }
       }
 
   glEnd();
   glFlush();
-  while(true)
-  {
-
-  }
+  while(true);
 }
 
 
@@ -257,14 +253,7 @@ vector< array<Vec2, 3> > tesselate()
       }
       if(i == n-1)
       {
-        printf("stuck :(\n");
-        for(int i =0; i < local_points.size(); i++)
-        {
-          printf("point %d: %d,%d\n", i, local_points[i].X, local_points[i].Y);
-        }
-        if(foundError)
-          drawErrorPoints(local_points);
-        foundError = true;
+        drawErrorPoints(local_points);
       }
     }
   }
@@ -275,59 +264,10 @@ vector< array<Vec2, 3> > tesselate()
 
 }
 
-vector<array<Vec2, 3> > tesselateR(vector<Vec2> points)
-{
-  if(isClockwise(points)) //if the points are not defined in a CCW manner, then reverse them
-    reverse(points.begin(), points.end());
-
-  vector< array<Vec2, 3> > triangles;
-  int n = points.size();
-  if (n == 3)
-  {
-    array<Vec2, 3> triangle = {points[0], points[1], points[2]};
-    triangles.push_back(triangle);
-    return triangles;
-  }
-
-  for(int i = 0; i < n; i++)
-  {
-    int winding;
-    if(validTriangle(points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
-    {
-        array<Vec2, 3> triangle = {points[i], points[(i+1)%n], points[(i+2)%n]};
-        triangles.push_back(triangle);
-        //remove middle point
-        points.erase(points.begin() + (i + 1)%n);
-
-        vector<array<Vec2, 3 > > rest = tesselateR(points);
-        triangles.insert(triangles.end(), rest.begin(), rest.end());
-        return triangles;
-    }
-    else if(winding == 0)
-    {
-        points.erase(points.begin() + (i + 1)%n);
-        return tesselateR(points);
-    }
-  }
-
-
-  printf("Error: Can't find point to remove\n");
-  if(!foundError)
-  {
-    foundError = true;
-    return tesselateR(points);
-  }
-  drawErrorPoints(points);
-  return triangles;
-}
-
-
-
-
 void drawTesselation()
 {
   if(triangles.empty())
-    triangles = tesselateR(points);
+    triangles = tesselate();
 
   for(int i = 0; i < triangles.size(); i++)
   {

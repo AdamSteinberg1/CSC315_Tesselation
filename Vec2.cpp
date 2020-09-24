@@ -24,12 +24,12 @@ int Vec2::dot(const Vec2 otherVector) const
   return X * otherVector.X + Y * otherVector.Y;
 }
 
-float Vec2::magnitude() const
+double Vec2::magnitude() const
 {
   return sqrt(X*X + Y*Y);
 }
 
-float Vec2::angleBetween(const Vec2 otherVector) const
+double Vec2::angleBetween(const Vec2 otherVector) const
 {
   return acos(dot(otherVector) / (magnitude() * otherVector.magnitude())); //in radians
 }
