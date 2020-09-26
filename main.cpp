@@ -18,18 +18,19 @@ Mode currMode = OUTLINE;
 vector< array<Vec2, 3> > triangles;
 
 // Specity the values to place and size the window on the screen
+const int WINDOW_SIDE_LENGTH = 800;
 
 const int WINDOW_POSITION_X = 100;
 const int WINDOW_POSITION_Y = 100;
-const int WINDOW_MAX_X = 800;
-const int WINDOW_MAX_Y = 800;
+const int WINDOW_MAX_X = WINDOW_SIDE_LENGTH;
+const int WINDOW_MAX_Y = WINDOW_SIDE_LENGTH;
 
 // Specify the coordinate ranges for the world coordinates in the 2D Frame
 
 const float WORLD_COORDINATE_MIN_X = 0.0;
-const float WORLD_COORDINATE_MAX_X = WINDOW_MAX_X;
+const float WORLD_COORDINATE_MAX_X = WINDOW_SIDE_LENGTH;
 const float WORLD_COORDINATE_MIN_Y = 0.0;
-const float WORLD_COORDINATE_MAX_Y = WINDOW_MAX_Y;
+const float WORLD_COORDINATE_MAX_Y = WINDOW_SIDE_LENGTH;
 
 
 //determinate of 2x2 matrix
@@ -100,19 +101,22 @@ void drawOutline()
       for(int i =0; i < n; i++)
       {
         randomizeColor();
-        if( i == 0)
-        {
-          glVertex2f(points[i].X, points[i].Y);
-          glVertex2f(points[n-1].X, points[n-1].Y);
-        }
-        else
-        {
-          glVertex2f(points[i].X, points[i].Y);
-          glVertex2f(points[i-1].X, points[i-1].Y);
-        }
+
+        glVertex2f(points[i].X, points[i].Y);
+        glVertex2f(points[(i+1)%n].X, points[(i+1)%n].Y);
+
       }
 
   glEnd();
+}
+
+double area(array<Vec2, 3> triangle)
+//formula from https://en.wikipedia.org/wiki/Triangle#Using_coordinates
+{
+  Vec2 a = triangle[0];
+  Vec2 b = triangle[1];
+  Vec2 c = triangle[2];
+  return 0.5 * fabs(a.X*b.Y - a.X*c.Y + b.X*c.Y - b.X*a.Y + c.X*a.Y - c.X*b.Y);
 }
 
 //returns true if the points are defined in a clockwise manner
@@ -133,7 +137,7 @@ bool diagonalIntersect(vector<Vec2> local_points, int index)
   int n = local_points.size();
   for(int i = 0; i < n; i++)
   {
-    //first make sure that we don't check if any of the points are the same
+    //first make sure that we don't perform the check if any of the points are the same
     if(i == index)
       continue;
     if(i == (index + 2)%n)
@@ -158,7 +162,9 @@ int sgn(int num) //returns 1 if num is postiive, -1 if num is negative, and 0 if
   return 0;
 }
 
-bool validTriangle(vector<Vec2> points, int index, int & winding)
+
+//check all conditions that would allow us to remove an ear from our polygon
+bool validEar(vector<Vec2> points, int index, int & winding)
 {
   int n = points.size();
 
@@ -195,7 +201,6 @@ void drawErrorPoints(vector<Vec2> badPoints)
 {
   printf("Encountered a fatal error. The program cannot find any ears to clip.\n");
   printf("The program cannot figure out how to tesselate the displayed polygon.\n");
-  printf("Please force quit the program.");
   printf("The polygon's points are:\n");
   glClear(GL_COLOR_BUFFER_BIT);  /*clear the window */
   glBegin(GL_LINES);
@@ -213,11 +218,11 @@ void drawErrorPoints(vector<Vec2> badPoints)
 
   glEnd();
   glFlush();
-  while(true);
+  while(true); //freeze the program
 }
 
 
-//returns the triangle list
+//returns a list of triangles that compose the polygon
 vector< array<Vec2, 3> > tesselate()
 {
   vector< array<Vec2, 3> > triangles;
@@ -230,11 +235,10 @@ vector< array<Vec2, 3> > tesselate()
   int n = local_points.size();
   while(n > 3)
   {
-
     for(int i = 0; i < n; i++)
     {
       int winding;
-      if(validTriangle(local_points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
+      if(validEar(local_points, i, winding)) //ccw winding and the diagonal does not intersect any line segments
       {
           array<Vec2, 3> triangle = {local_points[i], local_points[(i+1)%n], local_points[(i+2)%n]};
           triangles.push_back(triangle);
@@ -246,13 +250,14 @@ vector< array<Vec2, 3> > tesselate()
       }
       else if(winding == 0)
       {
-          printf("winding = 0\n");
           local_points.erase(local_points.begin() + (i + 1)%n);
           n--;
           break; //start over
       }
       if(i == n-1)
       {
+        //if we cannot find any vaild ears
+        //we should never get here
         drawErrorPoints(local_points);
       }
     }
@@ -271,6 +276,7 @@ void drawTesselation()
 
   for(int i = 0; i < triangles.size(); i++)
   {
+    printf("Triangle %d's area = %f\n", i+1, area(triangles[i]));
     randomizeColor();
     glBegin(GL_LINES);
         glVertex2f(triangles[i][0].X, triangles[i][0].Y);
@@ -308,16 +314,8 @@ void drawBadFill()
       int n = points.size();
       for(int i =0; i < n; i++)
       {
-        if( i == 0)
-        {
-          glVertex2f(points[i].X, points[i].Y);
-          glVertex2f(points[n-1].X, points[n-1].Y);
-        }
-        else
-        {
-          glVertex2f(points[i].X, points[i].Y);
-          glVertex2f(points[i-1].X, points[i-1].Y);
-        }
+        glVertex2f(points[i].X, points[i].Y);
+        glVertex2f(points[(i+1)%n].X, points[(i+1)%n].Y);
       }
 
   glEnd();
@@ -401,7 +399,7 @@ void mouse( int button, int state, int x, int y )
 
   if ( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
      {
-       if(polygonDrawn)
+       if(polygonDrawn) //clear the current polygon if we are starting a new one
        {
          points.clear();
          triangles.clear();
