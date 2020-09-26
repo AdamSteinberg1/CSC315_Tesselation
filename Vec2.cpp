@@ -1,3 +1,4 @@
+//implementation of Vec2.h
 #include "Vec2.h"
 #include <math.h>
 
@@ -8,8 +9,8 @@ Vec2::Vec2(int x, int y)
 }
 Vec2::Vec2()
 {
-  X = 0.0f;
-  Y = 0.0f;
+  X = 0;
+  Y = 0;
 }
 
 //returns the z component of the cross product: thisVector X otherVector
