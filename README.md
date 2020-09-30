@@ -3,7 +3,7 @@
 Assignment 1 for CSC 315 Computer Graphics  
 
 Instructions:
-  * Type ```make main``` to compile.
+  * Type ```make``` to compile.
   * Type ```./main``` to run. 
 
 Controls:
