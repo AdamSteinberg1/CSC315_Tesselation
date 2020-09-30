@@ -1,5 +1,3 @@
-// An OpenGL Keyboard and Mouse Interaction Program
-
 #include <GL/glut.h>
 #include <stdio.h>
 #include <vector>
