@@ -272,6 +272,7 @@ void drawTesselation()
   if(triangles.empty())
     triangles = tesselate();
 
+
   for(int i = 0; i < triangles.size(); i++)
   {
     printf("Triangle %d's area = %f\n", i+1, area(triangles[i]));
@@ -287,6 +288,7 @@ void drawTesselation()
         glVertex2f(triangles[i][0].X, triangles[i][0].Y);
     glEnd();
   }
+
 }
 
 void drawGoodFill()
@@ -303,6 +305,7 @@ void drawGoodFill()
         glVertex2f(triangles[i][2].X, triangles[i][2].Y);
     glEnd();
   }
+
 }
 
 void drawBadFill()
