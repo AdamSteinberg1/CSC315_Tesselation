@@ -8,7 +8,6 @@
 
 using namespace std;
 // These are defined in a global scope
-bool foundError = false;
 vector<Vec2> points;
 bool polygonDrawn = false;
 enum Mode {OUTLINE, TESSELATION, BAD_FILL, GOOD_FILL};
