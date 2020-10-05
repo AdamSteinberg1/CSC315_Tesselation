@@ -1,5 +1,3 @@
-// An OpenGL Keyboard and Mouse Interaction Program
-
 #include <GL/glut.h>
 #include <stdio.h>
 #include <vector>
@@ -10,7 +8,6 @@
 
 using namespace std;
 // These are defined in a global scope
-bool foundError = false;
 vector<Vec2> points;
 bool polygonDrawn = false;
 enum Mode {OUTLINE, TESSELATION, BAD_FILL, GOOD_FILL};
@@ -276,6 +273,7 @@ void drawTesselation()
   if(triangles.empty())
     triangles = tesselate();
 
+
   for(int i = 0; i < triangles.size(); i++)
   {
     printf("Triangle %d's area = %f\n", i+1, area(triangles[i]));
@@ -291,6 +289,7 @@ void drawTesselation()
         glVertex2f(triangles[i][0].X, triangles[i][0].Y);
     glEnd();
   }
+
 }
 
 //draws the polygon being filled in with tesselation
@@ -308,6 +307,7 @@ void drawGoodFill()
         glVertex2f(triangles[i][2].X, triangles[i][2].Y);
     glEnd();
   }
+
 }
 
 //draws the polygon being filled in naively without tesselation
