@@ -56,6 +56,7 @@ bool intersect(Vec2 startPoint1, Vec2 endPoint1, Vec2 startPoint2, Vec2 endPoint
   return u_a > 0 && u_a < 1 && u_b > 0 && u_b < 1;
 }
 
+//sets up the window
 void myglutInit( int argc, char** argv )
 {
     glutInit(&argc,argv);
@@ -68,7 +69,6 @@ void myglutInit( int argc, char** argv )
 
 void myInit(void)
 {
-
 /* standard OpenGL attributes */
 
       glClearColor(1.0, 1.0, 1.0, 1.0); /* white background */
@@ -82,6 +82,7 @@ void myInit(void)
       glMatrixMode(GL_MODELVIEW);
 }
 
+//changes the color to a random color that is on the rainbow
 void randomizeColor()
 {
   //sin^2 returns a value between 0 and 1
@@ -94,6 +95,7 @@ void randomizeColor()
   glColor3f(red, green, blue);
 }
 
+//draws the outline of the polygon
 void drawOutline()
 {
   glBegin(GL_LINES);
@@ -104,12 +106,12 @@ void drawOutline()
 
         glVertex2f(points[i].X, points[i].Y);
         glVertex2f(points[(i+1)%n].X, points[(i+1)%n].Y);
-
       }
 
   glEnd();
 }
 
+//returns the area of a triangle
 double area(array<Vec2, 3> triangle)
 //formula from https://en.wikipedia.org/wiki/Triangle#Using_coordinates
 {
@@ -131,7 +133,7 @@ bool isClockwise(vector<Vec2> v)
   return sum > 0;
 }
 
-//returns true if the diagonal line segment intersects any other line segments
+//returns true if the diagonal line segment of a potential ear intersects any other line segments
 bool diagonalIntersect(vector<Vec2> local_points, int index)
 {
   int n = local_points.size();
@@ -197,6 +199,7 @@ bool validEar(vector<Vec2> points, int index, int & winding)
   return true;
 }
 
+//if our polygon cannot be tesselated, then show the sub-polygon that is causing the error
 void drawErrorPoints(vector<Vec2> badPoints)
 {
   printf("Encountered a fatal error. The program cannot find any ears to clip.\n");
@@ -266,7 +269,6 @@ vector< array<Vec2, 3> > tesselate()
   triangles.push_back(finalTriangle);
 
   return triangles;
-
 }
 
 void drawTesselation()
@@ -291,6 +293,7 @@ void drawTesselation()
   }
 }
 
+//draws the polygon being filled in with tesselation
 void drawGoodFill()
 {
   if(triangles.empty())
@@ -307,6 +310,7 @@ void drawGoodFill()
   }
 }
 
+//draws the polygon being filled in naively without tesselation
 void drawBadFill()
 {
   randomizeColor();
@@ -343,6 +347,7 @@ void display( void )
 
     glFlush();
  }
+
 
 //returns true if it is successful
 bool addPoint( int x, int y, bool isLast = false)
